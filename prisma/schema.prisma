@@ -1,0 +1,305 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum CustomerStatus {
+  active
+  suspended
+}
+
+enum SupplierStatus {
+  active
+  pending
+  suspended
+}
+
+enum CheckResult {
+  pass
+  fail
+  pending
+}
+
+enum OrderStatus {
+  pending
+  in_progress
+  delivered
+  cancelled
+}
+
+enum TicketPriority {
+  high
+  normal
+}
+
+enum TicketStatus {
+  open
+  in_progress
+  resolved
+}
+
+enum CurrencyStatus {
+  base
+  live
+}
+
+enum CampaignStatus {
+  live
+  sent
+  scheduled
+  paused
+}
+
+enum IntegrationStatus {
+  connected
+  not_connected
+}
+
+// ---------- Users ----------
+// Kept as three separate models (not one polymorphic "User") because each has a
+// distinct auth flow per the product spec: customer email/social auth, supplier
+// login, admin login with roles.
+
+model Customer {
+  id              String         @id @default(cuid())
+  name            String
+  email           String?        @unique
+  // Guest checkout never collects an email, only phone — so phone is the
+  // dedupe key for repeat guest customers; email stays optional for when
+  // real accounts/auth exist.
+  phone           String?        @unique
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  city            String?
+  status          CustomerStatus @default(active)
+  joinedAt        DateTime       @default(now())
+
+  orders         Order[]
+  supportTickets SupportTicket[]
+
+  @@map("customers")
+}
+
+model Supplier {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String?
+  categories   String[]
+  city         String?
+  status       SupplierStatus @default(pending)
+  rating       Float?
+  joinedAt     DateTime       @default(now())
+
+  orders       Order[]
+  verification VerificationSubmission?
+
+  @@map("suppliers")
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         String // free-form for now, e.g. "Super Admin", "Catalog Manager"
+  lastActiveAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@map("admin_users")
+}
+
+// ---------- Verification ----------
+// One row per supplier's current verification attempt. Never store document
+// URLs/images here — admins only ever see automated check results.
+
+model VerificationSubmission {
+  id            String      @id @default(cuid())
+  supplier      Supplier    @relation(fields: [supplierId], references: [id])
+  supplierId    String      @unique
+  ninCheck      CheckResult @default(pending)
+  faceCheck     CheckResult @default(pending)
+  cacCheck      CheckResult @default(pending)
+  bankCheck     CheckResult @default(pending)
+  failureReason String?
+  decision      String? // "approve" | "reject", null while still pending
+  decidedAt     DateTime?
+  submittedAt   DateTime    @default(now())
+
+  @@map("verification_submissions")
+}
+
+// ---------- Catalog ----------
+// Shared with the customer/supplier apps, not admin-only — API_CONTRACT.md flags
+// this as needing sign-off from whoever owns the data model before admin gets
+// write access to it. Modeled here since Orders need something to reference.
+
+model AnimalCategory {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  description String?
+
+  animals Animal[]
+
+  @@map("animal_categories")
+}
+
+model Animal {
+  id          String         @id @default(cuid())
+  category    AnimalCategory @relation(fields: [categoryId], references: [id])
+  categoryId  String
+  slug        String
+  name        String
+  description String?
+
+  parts Part[]
+
+  @@unique([categoryId, slug])
+  @@map("animals")
+}
+
+model Part {
+  id           String   @id @default(cuid())
+  animal       Animal   @relation(fields: [animalId], references: [id])
+  animalId     String
+  slug         String
+  name         String
+  basePrice    Int // NGN minor units (kobo)
+  unit         String // "kg" | "unit"
+  conditions   String[] // ["fresh", "frozen"]
+  processing   String[]
+  availability String   @default("in_stock") // "in_stock" | "limited" | "out_of_stock"
+
+  orderItems OrderItem[]
+
+  @@unique([animalId, slug])
+  @@map("parts")
+}
+
+// ---------- Orders ----------
+
+model Order {
+  id         String      @id @default(cuid())
+  ref        String      @unique // "#LM-5872"
+  customer   Customer    @relation(fields: [customerId], references: [id])
+  customerId String
+  // Null until an admin/ops flow assigns a fulfilling supplier — guest
+  // checkout has no supplier-selection step, so every order starts
+  // unassigned rather than guessing one.
+  supplier   Supplier?   @relation(fields: [supplierId], references: [id])
+  supplierId String?
+  status     OrderStatus @default(pending)
+  totalAmount Int // NGN minor units
+  itemsSummary String // denormalized display string, e.g. "Goat Meat (Leg) · 3.2kg"
+  placedAt   DateTime    @default(now())
+
+  // Guest delivery details, captured per-order (not on Customer, since a
+  // guest's address can differ order to order and there's no address book).
+  // Nullable because existing admin-side seed orders predate this and have
+  // no delivery capture to backfill — always populated for real customer orders.
+  deliveryName    String?
+  deliveryPhone   String?
+  deliveryAddress String?
+  deliveryCity    String?
+
+  items OrderItem[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id       String  @id @default(cuid())
+  order    Order   @relation(fields: [orderId], references: [id])
+  orderId  String
+  part     Part    @relation(fields: [partId], references: [id])
+  partId   String
+  quantity Float
+  price    Int // NGN minor units, snapshotted at order time
+  // Selection detail snapshotted at order time, matching what the cut
+  // selector captured — Part itself just defines what's offered, not what
+  // the customer picked for this line.
+  condition      String?
+  processingType String?
+  weightKg       Float?
+
+  @@map("order_items")
+}
+
+// ---------- Support ----------
+
+model SupportTicket {
+  id         String         @id @default(cuid())
+  ref        String         @unique // "#TCK-231"
+  subject    String
+  customer   Customer       @relation(fields: [customerId], references: [id])
+  customerId String
+  priority   TicketPriority @default(normal)
+  status     TicketStatus   @default(open)
+  createdAt  DateTime       @default(now())
+
+  @@map("support_tickets")
+}
+
+// ---------- Pricing & currency ----------
+
+model Currency {
+  code      String         @id // "NGN", "USD"
+  symbol    String
+  label     String
+  rateToNgn Float
+  status    CurrencyStatus @default(live)
+
+  @@map("currencies")
+}
+
+model ProcessingAdjustment {
+  id                String @id @default(cuid())
+  processingType    String @unique
+  adjustmentPercent Float?
+
+  @@map("processing_adjustments")
+}
+
+// ---------- Promotions ----------
+
+model Campaign {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  audience  String
+  status    CampaignStatus @default(scheduled)
+  reach     Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  @@map("campaigns")
+}
+
+// ---------- Settings ----------
+// Single-row table — application code always reads/writes id 1.
+
+model PlatformSetting {
+  id           Int     @id @default(1)
+  platformName String  @default("LetsMeat")
+  supportEmail String?
+  baseCurrency String  @default("NGN")
+
+  @@map("platform_settings")
+}
+
+model Integration {
+  id       String            @id @default(cuid())
+  name     String            @unique
+  category String
+  status   IntegrationStatus @default(not_connected)
+
+  @@map("integrations")
+}
