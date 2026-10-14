@@ -202,6 +202,10 @@ model Order {
   totalAmount Int // NGN minor units
   itemsSummary String // denormalized display string, e.g. "Goat Meat (Leg) · 3.2kg"
   placedAt   DateTime    @default(now())
+  // Payment confirmation is separate from fulfillment `status` above — an
+  // order can sit unpaid (null) if checkout started but Paystack was never
+  // completed; only a server-side verify against Paystack ever sets this.
+  paidAt     DateTime?
 
   // Guest delivery details, captured per-order (not on Customer, since a
   // guest's address can differ order to order and there's no address book).
