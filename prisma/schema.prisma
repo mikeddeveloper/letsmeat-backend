@@ -307,3 +307,41 @@ model Integration {
 
   @@map("integrations")
 }
+
+// ---------- Landing content & manual product upload ----------
+// Interim, testing-phase tooling: lets admin edit a handful of landing-page
+// marketing fields and hand-enter products (incl. "Cut of the Day") without
+// touching the hand-built static catalog in apps/web-next, which stays the
+// source of truth for the real taxonomy/zone-map diagrams. Meant to be
+// superseded once suppliers can self-upload via the mobile app.
+
+// Single-row table — application code always reads/writes id 1, same
+// pattern as PlatformSetting above.
+model LandingContent {
+  id              Int      @id @default(1)
+  heroEyebrow     String   @default("The butcher's table, online")
+  heroHeadline    String   @default("Choose your cut, buy it by the kilo.")
+  heroSubheadline String   @default("Browse by species, click the exact cut off a real diagram, choose fresh or frozen — priced per kilogram, tracked from supplier to your door.")
+  heroCtaLabel    String   @default("Start shopping")
+  updatedAt       DateTime @updatedAt
+
+  @@map("landing_content")
+}
+
+model AdminProduct {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  categoryLabel String // free text, e.g. "Red Meat" — not FK'd to the static catalog taxonomy
+  price         Int // NGN minor units (kobo), same convention as Part.basePrice
+  unit          String // "kg" | "unit"
+  imageUrl      String?
+  availability  String   @default("in_stock") // "in_stock" | "limited" | "out_of_stock"
+  // Only one row should be true at a time — enforced in the write endpoint,
+  // not the schema, same spirit as the single-row tables above.
+  isCutOfTheDay Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("admin_products")
+}
