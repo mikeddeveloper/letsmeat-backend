@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    return NextResponse.json({ error: "Image uploads aren't configured yet." }, { status: 500 });
+    return NextResponse.json({ error: "Image uploads aren't configured yet." }, { status: 501 });
   }
 
   const form = await request.formData().catch(() => null);
