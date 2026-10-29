@@ -35,6 +35,22 @@ export class UnknownCatalogItemError extends Error {
   }
 }
 
+// The client submits `subtotal` separately from each item's `price`, with
+// nothing tying the two together — a request could carry real items but an
+// arbitrary subtotal, and that subtotal is what gets charged via Paystack
+// (see payments/initialize). Rejecting any mismatch closes that gap without
+// guessing at the storefront's full pricing formula (condition/processing
+// adjustments aren't modeled here) — each line's `price` is still
+// client-supplied and not re-priced against the catalog.
+export class SubtotalMismatchError extends Error {
+  constructor(
+    public submitted: number,
+    public computed: number,
+  ) {
+    super(`Submitted subtotal (${submitted}) doesn't match the sum of item prices (${computed}).`);
+  }
+}
+
 const ORDER_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function generateOrderRef() {
@@ -49,6 +65,14 @@ function generateOrderRef() {
  * generation logic, just triggered from different places.
  */
 export async function createOrder({ items, subtotal, delivery }: CreateOrderInput) {
+  // item.price is already the line's total (see OrderItemSchema above), not
+  // a per-unit rate — summing it directly matches how OrderItem.price is
+  // stored and displayed elsewhere (no separate quantity multiplication).
+  const computedSubtotal = items.reduce((sum, item) => sum + item.price, 0);
+  if (Math.abs(computedSubtotal - subtotal) > 0.01) {
+    throw new SubtotalMismatchError(subtotal, computedSubtotal);
+  }
+
   const resolvedItems: Array<{ partId: string; item: z.infer<typeof OrderItemSchema> }> = [];
   for (const item of items) {
     const part = await prisma.part.findFirst({
@@ -81,7 +105,7 @@ export async function createOrder({ items, subtotal, delivery }: CreateOrderInpu
     data: {
       ref,
       customerId: customer.id,
-      totalAmount: Math.round(subtotal * 100),
+      totalAmount: Math.round(computedSubtotal * 100),
       itemsSummary,
       deliveryName: delivery.name,
       deliveryPhone: delivery.phone,

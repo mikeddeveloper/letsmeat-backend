@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CreateOrderSchema, UnknownCatalogItemError, createOrder } from "@/lib/createOrder";
+import { CreateOrderSchema, SubtotalMismatchError, UnknownCatalogItemError, createOrder } from "@/lib/createOrder";
 
 // Guest checkout only — no customer auth exists yet, so orders are created
 // against a Customer record upserted by phone number (the one stable
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     const order = await createOrder(parsed.data);
     return NextResponse.json({ orderNumber: order.ref, placedAt: order.placedAt }, { status: 201 });
   } catch (err) {
-    if (err instanceof UnknownCatalogItemError) {
+    if (err instanceof UnknownCatalogItemError || err instanceof SubtotalMismatchError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     throw err;

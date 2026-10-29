@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CreateOrderSchema, UnknownCatalogItemError, createOrder } from "@/lib/createOrder";
+import { CreateOrderSchema, SubtotalMismatchError, UnknownCatalogItemError, createOrder } from "@/lib/createOrder";
 import { getPublicWebOrigin } from "@/lib/publicOrigin";
 import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   try {
     order = await createOrder(parsed.data);
   } catch (err) {
-    if (err instanceof UnknownCatalogItemError) {
+    if (err instanceof UnknownCatalogItemError || err instanceof SubtotalMismatchError) {
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
     throw err;
