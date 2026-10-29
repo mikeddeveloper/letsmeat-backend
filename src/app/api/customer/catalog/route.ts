@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { CANONICAL_CATEGORY_SLUGS } from "@/lib/catalogCategories";
 
 // Public, unauthenticated — matches the shape apps/web-next's static
 // src/lib/data/catalog.ts already exports (ProteinCategory[]), so the
 // frontend can swap its data source without reshaping consumers.
 export async function GET() {
   const categories = await prisma.animalCategory.findMany({
+    where: { slug: { in: [...CANONICAL_CATEGORY_SLUGS] } },
     include: { animals: { include: { parts: true }, orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });

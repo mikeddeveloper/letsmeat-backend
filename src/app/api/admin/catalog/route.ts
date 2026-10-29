@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAdminSession } from "@/lib/adminSession";
+import { CANONICAL_CATEGORY_SLUGS } from "@/lib/catalogCategories";
 
 // Same tree shape as /api/customer/catalog (so both apps' consumers stay in
 // sync), just auth-gated and under the admin namespace.
@@ -9,6 +10,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const categories = await prisma.animalCategory.findMany({
+    where: { slug: { in: [...CANONICAL_CATEGORY_SLUGS] } },
     include: { animals: { include: { parts: true }, orderBy: { name: "asc" } } },
     orderBy: { name: "asc" },
   });

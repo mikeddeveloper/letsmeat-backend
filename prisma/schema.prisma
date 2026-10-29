@@ -15,6 +15,8 @@ datasource db {
 enum CustomerStatus {
   active
   suspended
+  whitelisted
+  blacklisted
 }
 
 enum SupplierStatus {
@@ -81,6 +83,9 @@ model Customer {
   emailVerifiedAt DateTime?
   city            String?
   status          CustomerStatus @default(active)
+  // Internal-only admin note (e.g. why someone was blacklisted) — never
+  // exposed to the customer-facing app.
+  adminNote       String?
   joinedAt        DateTime       @default(now())
 
   orders         Order[]

@@ -16,6 +16,7 @@ export async function GET() {
       id: c.id,
       name: c.name,
       email: c.email,
+      phone: c.phone,
       city: c.city,
       ordersCount: c._count.orders,
       status: c.status,
