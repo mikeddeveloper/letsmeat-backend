@@ -83,19 +83,15 @@ async function seedVerification(suppliers: Record<string, Supplier>) {
     {
       supplier: "Northern Livestock Co.",
       ninCheck: "pass" as const,
-      faceCheck: "pass" as const,
-      cacCheck: "pass" as const,
-      bankCheck: "pass" as const,
+      bvnCheck: "pass" as const,
       failureReason: null,
       submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60_000),
     },
     {
       supplier: "Highland Farms",
       ninCheck: "pass" as const,
-      faceCheck: "pass" as const,
-      cacCheck: "fail" as const,
-      bankCheck: "pass" as const,
-      failureReason: "CAC director name does not match owner",
+      bvnCheck: "fail" as const,
+      failureReason: "BVN does not match the name on file",
       submittedAt: new Date(Date.now() - 1 * 24 * 60 * 60_000),
     },
   ];
@@ -103,13 +99,11 @@ async function seedVerification(suppliers: Record<string, Supplier>) {
     const supplier = suppliers[row.supplier];
     await prisma.verificationSubmission.upsert({
       where: { supplierId: supplier.id },
-      update: row.failureReason === null ? { ninCheck: row.ninCheck, faceCheck: row.faceCheck, cacCheck: row.cacCheck, bankCheck: row.bankCheck, failureReason: null } : { ninCheck: row.ninCheck, faceCheck: row.faceCheck, cacCheck: row.cacCheck, bankCheck: row.bankCheck, failureReason: row.failureReason },
+      update: row.failureReason === null ? { ninCheck: row.ninCheck, bvnCheck: row.bvnCheck, failureReason: null } : { ninCheck: row.ninCheck, bvnCheck: row.bvnCheck, failureReason: row.failureReason },
       create: {
         supplierId: supplier.id,
         ninCheck: row.ninCheck,
-        faceCheck: row.faceCheck,
-        cacCheck: row.cacCheck,
-        bankCheck: row.bankCheck,
+        bvnCheck: row.bvnCheck,
         failureReason: row.failureReason,
         submittedAt: row.submittedAt,
       },

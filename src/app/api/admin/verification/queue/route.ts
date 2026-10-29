@@ -18,7 +18,7 @@ export async function GET() {
       businessName: s.supplier.name,
       location: s.supplier.city,
       submittedAt: s.submittedAt,
-      checks: { nin: s.ninCheck, face: s.faceCheck, cac: s.cacCheck, bank: s.bankCheck },
+      checks: { nin: s.ninCheck, bvn: s.bvnCheck },
       failureReason: s.failureReason ?? undefined,
     })),
   );

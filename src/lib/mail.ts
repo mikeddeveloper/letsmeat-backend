@@ -1,5 +1,5 @@
 import "server-only";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 function requireEnv(name: string) {
   const value = process.env[name];
@@ -7,20 +7,12 @@ function requireEnv(name: string) {
   return value;
 }
 
-let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
+let client: Resend | null = null;
 
-function getTransporter() {
-  if (transporter) return transporter;
-  transporter = nodemailer.createTransport({
-    host: requireEnv("MAIL_HOST"),
-    port: Number(process.env.MAIL_PORT ?? 587),
-    secure: process.env.MAIL_ENCRYPTION === "ssl",
-    auth: {
-      user: requireEnv("MAIL_USERNAME"),
-      pass: requireEnv("MAIL_PASSWORD"),
-    },
-  });
-  return transporter;
+function getClient() {
+  if (client) return client;
+  client = new Resend(requireEnv("RESEND_API_KEY"));
+  return client;
 }
 
 export async function sendMail({
@@ -34,14 +26,19 @@ export async function sendMail({
   html: string;
   text?: string;
 }) {
-  const fromAddress = requireEnv("MAIL_FROM_ADDRESS");
+  // onboarding@resend.dev works out of the box with no domain setup —
+  // once a real domain is verified in Resend, swap MAIL_FROM_ADDRESS to an
+  // address on that domain and nothing else here needs to change.
+  const fromAddress = process.env.MAIL_FROM_ADDRESS || "onboarding@resend.dev";
   const fromName = process.env.MAIL_FROM_NAME ?? "LetsMeat";
 
-  return getTransporter().sendMail({
-    from: `"${fromName}" <${fromAddress}>`,
+  const { error } = await getClient().emails.send({
+    from: `${fromName} <${fromAddress}>`,
     to,
     subject,
     html,
     text,
   });
+
+  if (error) throw new Error(`Resend failed to send mail: ${error.message}`);
 }

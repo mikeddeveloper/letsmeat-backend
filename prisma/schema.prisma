@@ -126,15 +126,14 @@ model AdminUser {
 // ---------- Verification ----------
 // One row per supplier's current verification attempt. Never store document
 // URLs/images here — admins only ever see automated check results.
+// Strictly NIN + BVN via VerifyMe — no face/CAC checks are performed.
 
 model VerificationSubmission {
   id            String      @id @default(cuid())
   supplier      Supplier    @relation(fields: [supplierId], references: [id])
   supplierId    String      @unique
   ninCheck      CheckResult @default(pending)
-  faceCheck     CheckResult @default(pending)
-  cacCheck      CheckResult @default(pending)
-  bankCheck     CheckResult @default(pending)
+  bvnCheck      CheckResult @default(pending)
   failureReason String?
   decision      String? // "approve" | "reject", null while still pending
   decidedAt     DateTime?
