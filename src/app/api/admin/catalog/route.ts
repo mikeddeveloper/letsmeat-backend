@@ -24,6 +24,7 @@ export async function GET() {
         name: animal.name,
         description: animal.description ?? "",
         parts: animal.parts.map((part) => ({
+          id: part.id,
           slug: part.slug,
           name: part.name,
           basePrice: part.basePrice / 100,

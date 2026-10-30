@@ -42,3 +42,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     availability: part.availability,
   });
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { id } = await params;
+  const existing = await prisma.part.findUnique({ where: { id }, include: { _count: { select: { orderItems: true } } } });
+  if (!existing) return NextResponse.json({ error: "Part not found" }, { status: 404 });
+
+  if (existing._count.orderItems > 0) {
+    return NextResponse.json(
+      { error: `"${existing.name}" has been ordered before and can't be deleted. Set it to out of stock instead.` },
+      { status: 409 },
+    );
+  }
+
+  await prisma.part.delete({ where: { id } });
+  return NextResponse.json({ ok: true });
+}

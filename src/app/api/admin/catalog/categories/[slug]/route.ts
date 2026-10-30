@@ -32,3 +32,36 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ sl
 
   return NextResponse.json({ slug: updated.slug, name: updated.name, description: updated.description ?? "" });
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ slug: string }> }) {
+  const session = await getAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { slug } = await params;
+  const category = await prisma.animalCategory.findUnique({
+    where: { slug },
+    include: { animals: { include: { parts: { include: { _count: { select: { orderItems: true } } } } } } },
+  });
+  if (!category) return NextResponse.json({ error: "Category not found" }, { status: 404 });
+
+  const orderedParts = category.animals.flatMap((animal) => animal.parts).filter((part) => part._count.orderItems > 0);
+  if (orderedParts.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Can't delete "${category.name}" — these cuts have been ordered before: ${orderedParts
+          .map((p) => p.name)
+          .join(", ")}. Remove the other animal types/cuts first, or set these to out of stock instead.`,
+      },
+      { status: 409 },
+    );
+  }
+
+  const animalIds = category.animals.map((a) => a.id);
+  await prisma.$transaction([
+    prisma.part.deleteMany({ where: { animalId: { in: animalIds } } }),
+    prisma.animal.deleteMany({ where: { categoryId: category.id } }),
+    prisma.animalCategory.delete({ where: { id: category.id } }),
+  ]);
+
+  return NextResponse.json({ ok: true });
+}
