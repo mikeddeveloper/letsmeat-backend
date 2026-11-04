@@ -349,3 +349,23 @@ model AdminProduct {
 
   @@map("admin_products")
 }
+
+// ---------- Supplier waitlist ----------
+// Lead capture for "I want to sell on LetsMeat" — not a real Supplier row
+// yet (no auth, no verification). Admin converts a promising entry into a
+// real Supplier account manually once contacted.
+
+model SupplierWaitlistEntry {
+  id         String   @id @default(cuid())
+  name       String
+  shopName   String
+  address    String
+  phone      String
+  category   String? // one of the real catalog category names, or "Other"
+  // Lets admin triage the list without deleting a lead — the nav badge
+  // only counts contacted: false.
+  contacted  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@map("supplier_waitlist_entries")
+}
