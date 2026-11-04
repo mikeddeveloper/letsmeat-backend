@@ -361,6 +361,11 @@ model SupplierWaitlistEntry {
   shopName   String
   address    String
   phone      String
+  // Digits-only, 0-prefix normalized to 234-prefix, so "0801..." and
+  // "+234801..." collide as the same person. Nullable + unique rather than
+  // a NOT NULL default so existing rows don't need a backfill migration —
+  // Postgres allows multiple NULLs under a unique index.
+  phoneKey   String?  @unique
   category   String? // one of the real catalog category names, or "Other"
   // Lets admin triage the list without deleting a lead — the nav badge
   // only counts contacted: false.
