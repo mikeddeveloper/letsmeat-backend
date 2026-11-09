@@ -45,7 +45,7 @@ export async function PATCH(request: Request) {
       ...(platformName !== undefined ? { platformName } : {}),
       ...(supportEmail !== undefined ? { supportEmail: supportEmail || null } : {}),
     },
-    create: { id: 1, platformName: platformName ?? "LetsMeat", supportEmail: supportEmail || null },
+    create: { id: 1, platformName: platformName ?? "Let's Meat", supportEmail: supportEmail || null },
   });
 
   return NextResponse.json({

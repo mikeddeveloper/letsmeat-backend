@@ -296,7 +296,7 @@ model Campaign {
 
 model PlatformSetting {
   id           Int     @id @default(1)
-  platformName String  @default("LetsMeat")
+  platformName String  @default("Let's Meat")
   supportEmail String?
   baseCurrency String  @default("NGN")
 
@@ -351,7 +351,7 @@ model AdminProduct {
 }
 
 // ---------- Supplier waitlist ----------
-// Lead capture for "I want to sell on LetsMeat" — not a real Supplier row
+// Lead capture for "I want to sell on Let's Meat" — not a real Supplier row
 // yet (no auth, no verification). Admin converts a promising entry into a
 // real Supplier account manually once contacted.
 

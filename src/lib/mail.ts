@@ -30,7 +30,7 @@ export async function sendMail({
   // once a real domain is verified in Resend, swap MAIL_FROM_ADDRESS to an
   // address on that domain and nothing else here needs to change.
   const fromAddress = process.env.MAIL_FROM_ADDRESS || "onboarding@resend.dev";
-  const fromName = process.env.MAIL_FROM_NAME ?? "LetsMeat";
+  const fromName = process.env.MAIL_FROM_NAME ?? "Let's Meat";
 
   const { error } = await getClient().emails.send({
     from: `${fromName} <${fromAddress}>`,
